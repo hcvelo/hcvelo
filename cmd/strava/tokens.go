@@ -1,4 +1,4 @@
-package tokens
+package strava
 
 import (
 	"encoding/json"

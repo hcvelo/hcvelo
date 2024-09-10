@@ -1,4 +1,4 @@
-package events
+package strava
 
 import (
 	"encoding/json"

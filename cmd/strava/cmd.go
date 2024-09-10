@@ -1,4 +1,4 @@
-package main
+package strava
 
 import (
 	"encoding/json"
@@ -7,11 +7,40 @@ import (
 	"os"
 	"time"
 
-	"github.com/hcvelo/hcvelo/pkg/strava/events"
-	"github.com/hcvelo/hcvelo/pkg/strava/tokens"
+	"github.com/spf13/cobra"
 )
 
-type ApplicationSettings struct {
+var Cmd = &cobra.Command{
+	Use:   "strava",
+	Short: "get hcvelo information from strava",
+	Long:  "get hcvelo information from strava",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("hello from strava")
+	},
+}
+
+var Foo = &cobra.Command{
+	Use:   "foo",
+	Short: "get foo information from strava",
+	Long:  "get foo information from strava",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("foo")
+		wibble()
+	},
+}
+
+var (
+	configPath string
+	tokensPath string
+)
+
+func init() {
+	Cmd.Flags().StringVarP(&configPath, "config", "c", "./config.json", "path to strava config file")
+	Cmd.Flags().StringVarP(&tokensPath, "tokens", "t", "./data/tokens.json", "path to strava tokwns file")
+	Cmd.AddCommand(Foo)
+}
+
+type StravaSettings struct {
 	// ClientID is the client ID of the application
 	ClientID string `json:"client_id"`
 
@@ -37,9 +66,9 @@ type ApplicationSettings struct {
 	ClubID string `json:"club_id"`
 }
 
-func main() {
+func wibble() {
 	// load application settings
-	appSettings, err := loadApplicationSettings()
+	appSettings, err := loadStravaSettings()
 	if err != nil {
 		fmt.Printf("failed to load application settings: %v\n", err)
 		return
@@ -48,7 +77,7 @@ func main() {
 	client := http.DefaultClient
 
 	// load tokens from file
-	appTokens, err := tokens.ReadTokensFromFile(appSettings.LocalStore)
+	appTokens, err := ReadTokensFromFile(appSettings.LocalStore)
 	if err != nil {
 		fmt.Printf("failed to read tokens from file: %v\n", err)
 		return
@@ -57,13 +86,13 @@ func main() {
 	expiryTime := time.Unix(int64(appTokens.ExpiresAt), 0)
 	if expiryTime.Before(time.Now().Add(10 * time.Minute)) {
 		// get new tokens from refresh token
-		input := tokens.RefreshTokensInput{
+		input := RefreshTokensInput{
 			ClientID:     appSettings.ClientID,
 			ClientSecret: appSettings.ClientSecret,
 			RefreshToken: appTokens.RefreshToken,
 			Client:       client,
 		}
-		appTokens, err = tokens.RefreshTokens(input)
+		appTokens, err = RefreshTokens(input)
 		if err != nil {
 			fmt.Printf("failed to refresh tokens: %v\n", err)
 			return
@@ -71,13 +100,13 @@ func main() {
 	}
 
 	// get club activities
-	getActivitiesInput := events.GetActivitiesInput{
+	getActivitiesInput := GetActivitiesInput{
 		ClubID:      appSettings.ClubID,
 		AccessToken: appTokens.AccessToken,
 		Client:      client,
 	}
 
-	upcoming, err := events.GetClubActivities(getActivitiesInput)
+	upcoming, err := GetClubActivities(getActivitiesInput)
 	if err != nil {
 		fmt.Printf("failed to get upcoming Strava events: %v\n", err)
 	}
@@ -92,15 +121,15 @@ func main() {
 	fmt.Println(string(jsonUpcoming))
 
 	// store tokens to file
-	err = tokens.StoreTokensToFile(appSettings.LocalStore, appTokens)
+	err = StoreTokensToFile(appSettings.LocalStore, appTokens)
 	if err != nil {
 		fmt.Printf("failed to store tokens to file: %v\n", err)
 		return
 	}
 }
 
-func loadApplicationSettings() (ApplicationSettings, error) {
-	var settings ApplicationSettings
+func loadStravaSettings() (StravaSettings, error) {
+	var settings StravaSettings
 
 	configPath := "config.json"
 	file, err := os.Open(configPath)
