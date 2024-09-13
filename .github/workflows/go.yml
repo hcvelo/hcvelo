@@ -25,5 +25,15 @@ jobs:
     - name: Build
       run: make
 
+    - name: Setup Tokens
+      env:
+        STRAVA_TOKENS: ${{ secrets.STRAVA_TOKENS }}
+      run:
+        echo "$STRAVA_TOKENS" > ./exampleConfig/stravaTokens.json
+
     - name: Test
-      run: ./bin/hcvelo
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLUB_ID: ${{ secrets.CLUB_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      run: ./bin/hcvelo strava events --configDir ./exampleConfig --clientID "$CLIENT_ID" --clubID "$CLUB_ID" --clientSecret "$CLIENT_SECRET"
