@@ -37,3 +37,10 @@ jobs:
         CLUB_ID: ${{ secrets.CLUB_ID }}
         CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       run: ./bin/hcvelo strava events --configDir ./exampleConfig --clientID "$CLIENT_ID" --clubID "$CLUB_ID" --clientSecret "$CLIENT_SECRET"
+
+    - name: Update Secret
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: 
+        NEW_TOKEN=$(./bin/hcvelo strava tokens -configDir ./exampleConfig)
+        gh secret set STRAVA_TOKENS -b "$NEW_TOKEN"
