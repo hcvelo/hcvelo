@@ -26,18 +26,23 @@ var Cmd = &cobra.Command{
 }
 
 var (
-	configPath string
-	tokensPath string
+	clientID     string
+	clientSecret string
+	clubID       string
 )
 
 func init() {
+	Cmd.PersistentFlags().StringVar(&clientID, "clientID", "", "clientID for accessing strava")
+	Cmd.PersistentFlags().StringVar(&clientSecret, "clientSecret", "", "client secret for accessing strava")
+	Cmd.PersistentFlags().StringVar(&clubID, "clubID", "", "club ID for accessing strava")
+
 	events := &cobra.Command{
 		Use:   "events",
 		Short: "get hcvelo events information from strava",
 		Long:  "get hcvelo events information from strava",
 		Run: func(cmd *cobra.Command, args []string) {
 			f := cmd.Flags()
-			configPath, _ = f.GetString("configDir")
+			configPath, _ := f.GetString("configDir")
 			getEvents(configPath)
 		},
 	}
@@ -49,8 +54,10 @@ func init() {
 		Long:  "get current strava tokens",
 		Run: func(cmd *cobra.Command, args []string) {
 			f := cmd.Flags()
-			configPath, _ = f.GetString("configDir")
+			configPath, _ := f.GetString("configDir")
 			getTokens(configPath)
+
+			fmt.Println(clubID)
 		},
 	}
 	Cmd.AddCommand(tokens)
@@ -172,6 +179,18 @@ func loadStravaSettings(configDir string) (StravaSettings, error) {
 	err = json.NewDecoder(file).Decode(&settings)
 	if err != nil {
 		return settings, fmt.Errorf("failed to read settings from config file: %w", err)
+	}
+
+	if clientID != "" {
+		settings.ClientID = clientID
+	}
+
+	if clientSecret != "" {
+		settings.ClientSecret = clientSecret
+	}
+
+	if clubID != "" {
+		settings.ClubID = clubID
 	}
 
 	return settings, nil
