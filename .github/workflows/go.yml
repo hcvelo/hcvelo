@@ -42,5 +42,4 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: 
-        NEW_TOKEN=$(./bin/hcvelo strava tokens --configDir ./exampleConfig)
-        gh secret set STRAVA_TOKENS -b "$NEW_TOKEN"
+        gh secret set STRAVA_TOKENS < ./exampleConfig/stravaTokens.json
