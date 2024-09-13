@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -80,41 +78,4 @@ func RefreshTokens(input RefreshTokensInput) (Tokens, error) {
 		RefreshToken: tokenResponse.RefreshToken,
 		ExpiresAt:    tokenResponse.ExpiresAt,
 	}, nil
-}
-
-func StoreTokensToFile(localStore string, tokens Tokens) error {
-	// open file for writing
-	tokensFilePath := filepath.Join(localStore, "tokens.json")
-	file, err := os.Create(tokensFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to create tokens file: %w", err)
-	}
-	defer file.Close()
-
-	// write tokens to file
-	err = json.NewEncoder(file).Encode(tokens)
-	if err != nil {
-		return fmt.Errorf("failed to write tokens to file: %w", err)
-	}
-
-	return nil
-}
-
-func ReadTokensFromFile(localStore string) (Tokens, error) {
-	// open file for reading
-	tokensFilePath := filepath.Join(localStore, "tokens.json")
-	file, err := os.Open(tokensFilePath)
-	if err != nil {
-		return Tokens{}, fmt.Errorf("failed to open tokens file: %w", err)
-	}
-	defer file.Close()
-
-	// read tokens from file
-	var tokens Tokens
-	err = json.NewDecoder(file).Decode(&tokens)
-	if err != nil {
-		return Tokens{}, fmt.Errorf("failed to read tokens from file: %w", err)
-	}
-
-	return tokens, nil
 }

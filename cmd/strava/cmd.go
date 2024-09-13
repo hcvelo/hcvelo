@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	lib "github.com/hcvelo/hcvelo/pkg/strava"
 )
 
 var Cmd = &cobra.Command{
@@ -15,17 +18,10 @@ var Cmd = &cobra.Command{
 	Short: "get hcvelo information from strava",
 	Long:  "get hcvelo information from strava",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("hello from strava")
-	},
-}
-
-var Foo = &cobra.Command{
-	Use:   "foo",
-	Short: "get foo information from strava",
-	Long:  "get foo information from strava",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("foo")
-		wibble()
+		if len(args) == 0 {
+			cmd.Help()
+			return
+		}
 	},
 }
 
@@ -35,9 +31,29 @@ var (
 )
 
 func init() {
-	Cmd.Flags().StringVarP(&configPath, "config", "c", "./config.json", "path to strava config file")
-	Cmd.Flags().StringVarP(&tokensPath, "tokens", "t", "./data/tokens.json", "path to strava tokwns file")
-	Cmd.AddCommand(Foo)
+	events := &cobra.Command{
+		Use:   "events",
+		Short: "get hcvelo events information from strava",
+		Long:  "get hcvelo events information from strava",
+		Run: func(cmd *cobra.Command, args []string) {
+			f := cmd.Flags()
+			configPath, _ = f.GetString("configDir")
+			getEvents(configPath)
+		},
+	}
+	Cmd.AddCommand(events)
+
+	tokens := &cobra.Command{
+		Use:   "tokens",
+		Short: "get current strava tokens",
+		Long:  "get current strava tokens",
+		Run: func(cmd *cobra.Command, args []string) {
+			f := cmd.Flags()
+			configPath, _ = f.GetString("configDir")
+			getTokens(configPath)
+		},
+	}
+	Cmd.AddCommand(tokens)
 }
 
 type StravaSettings struct {
@@ -59,16 +75,13 @@ type StravaSettings struct {
 	// TokenURL is the URL to request tokens from
 	TokenURL string `json:"token_url"`
 
-	// LocalStore is the location to store application data
-	LocalStore string `json:"local_store"`
-
 	// ClubID is the ID of the club to get events for
 	ClubID string `json:"club_id"`
 }
 
-func wibble() {
+func getEvents(configDir string) {
 	// load application settings
-	appSettings, err := loadStravaSettings()
+	appSettings, err := loadStravaSettings(configDir)
 	if err != nil {
 		fmt.Printf("failed to load application settings: %v\n", err)
 		return
@@ -77,7 +90,7 @@ func wibble() {
 	client := http.DefaultClient
 
 	// load tokens from file
-	appTokens, err := ReadTokensFromFile(appSettings.LocalStore)
+	appTokens, err := readTokensFromFile(configDir)
 	if err != nil {
 		fmt.Printf("failed to read tokens from file: %v\n", err)
 		return
@@ -86,13 +99,13 @@ func wibble() {
 	expiryTime := time.Unix(int64(appTokens.ExpiresAt), 0)
 	if expiryTime.Before(time.Now().Add(10 * time.Minute)) {
 		// get new tokens from refresh token
-		input := RefreshTokensInput{
+		input := lib.RefreshTokensInput{
 			ClientID:     appSettings.ClientID,
 			ClientSecret: appSettings.ClientSecret,
 			RefreshToken: appTokens.RefreshToken,
 			Client:       client,
 		}
-		appTokens, err = RefreshTokens(input)
+		appTokens, err = lib.RefreshTokens(input)
 		if err != nil {
 			fmt.Printf("failed to refresh tokens: %v\n", err)
 			return
@@ -100,13 +113,13 @@ func wibble() {
 	}
 
 	// get club activities
-	getActivitiesInput := GetActivitiesInput{
+	getActivitiesInput := lib.GetActivitiesInput{
 		ClubID:      appSettings.ClubID,
 		AccessToken: appTokens.AccessToken,
 		Client:      client,
 	}
 
-	upcoming, err := GetClubActivities(getActivitiesInput)
+	upcoming, err := lib.GetClubActivities(getActivitiesInput)
 	if err != nil {
 		fmt.Printf("failed to get upcoming Strava events: %v\n", err)
 	}
@@ -121,17 +134,35 @@ func wibble() {
 	fmt.Println(string(jsonUpcoming))
 
 	// store tokens to file
-	err = StoreTokensToFile(appSettings.LocalStore, appTokens)
+	err = storeTokensToFile(configDir, appTokens)
 	if err != nil {
 		fmt.Printf("failed to store tokens to file: %v\n", err)
 		return
 	}
 }
 
-func loadStravaSettings() (StravaSettings, error) {
+func getTokens(configDir string) {
+	// load tokens from file
+	appTokens, err := readTokensFromFile(configDir)
+	if err != nil {
+		fmt.Printf("failed to read tokens from file: %v\n", err)
+		return
+	}
+
+	// print tokens
+	jsonTokens, err := json.MarshalIndent(appTokens, "", "  ")
+	if err != nil {
+		fmt.Printf("failed to marshal tokens: %v\n", err)
+		return
+	}
+
+	fmt.Println(string(jsonTokens))
+}
+
+func loadStravaSettings(configDir string) (StravaSettings, error) {
 	var settings StravaSettings
 
-	configPath := "config.json"
+	configPath := filepath.Join(configDir, "strava.json")
 	file, err := os.Open(configPath)
 	if err != nil {
 		return settings, fmt.Errorf("failed to open config file: %w", err)
@@ -144,4 +175,41 @@ func loadStravaSettings() (StravaSettings, error) {
 	}
 
 	return settings, nil
+}
+
+func storeTokensToFile(configDir string, tokens lib.Tokens) error {
+	// open file for writing
+	tokensFilePath := filepath.Join(configDir, "stravaTokens.json")
+	file, err := os.Create(tokensFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to create tokens file: %w", err)
+	}
+	defer file.Close()
+
+	// write tokens to file
+	err = json.NewEncoder(file).Encode(tokens)
+	if err != nil {
+		return fmt.Errorf("failed to write tokens to file: %w", err)
+	}
+
+	return nil
+}
+
+func readTokensFromFile(configDir string) (lib.Tokens, error) {
+	// open file for reading
+	tokensFilePath := filepath.Join(configDir, "stravaTokens.json")
+	file, err := os.Open(tokensFilePath)
+	if err != nil {
+		return lib.Tokens{}, fmt.Errorf("failed to open tokens file: %w", err)
+	}
+	defer file.Close()
+
+	// read tokens from file
+	var tokens lib.Tokens
+	err = json.NewDecoder(file).Decode(&tokens)
+	if err != nil {
+		return lib.Tokens{}, fmt.Errorf("failed to read tokens from file: %w", err)
+	}
+
+	return tokens, nil
 }
