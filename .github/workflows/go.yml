@@ -54,8 +54,9 @@ jobs:
         rm ./hcvelo.github.io/content/rides/*
         cp -r ./rides/* ./hcvelo.github.io/content/rides
         cd ./hcvelo.github.io
+        git remote set-url origin "https://hcvelo:$GH_TOKEN@github.com/hcvelo/hcvelo.github.io.git"
         git config user.email "hcvelo-bot@hcvelo.com"
-        git config user.name "hcvelo bot"
+        git config user.name "hcvelo"
         git add .
         git commit -m "Update Rides"
         git push -u origin main
