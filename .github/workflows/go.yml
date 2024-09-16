@@ -50,7 +50,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
-        gh repo clone hcvelo/hcvelo.github.io
+        git clone https://github.com/hcvelo/hcvelo.github.io.git
         rm ./hcvelo.github.io/content/rides/*
         cp -r ./rides/* ./hcvelo.github.io/content/rides
         cd ./hcvelo.github.io
@@ -58,4 +58,4 @@ jobs:
         git config user.name "hcvelo bot"
         git add .
         git commit -m "Update Rides"
-        git push
+        git push -u origin main
