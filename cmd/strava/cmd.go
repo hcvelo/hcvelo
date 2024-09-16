@@ -3,6 +3,8 @@ package strava
 import (
 	"encoding/json"
 	"fmt"
+	"html"
+	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +14,13 @@ import (
 
 	lib "github.com/hcvelo/hcvelo/pkg/strava"
 )
+
+type MarkdownEvent struct {
+	lib.SimpleClubEvent
+	URL  string
+	Date string
+	Time string
+}
 
 var Cmd = &cobra.Command{
 	Use:   "strava",
@@ -29,6 +38,8 @@ var (
 	clientID     string
 	clientSecret string
 	clubID       string
+	format       string
+	outputDir    string
 )
 
 func init() {
@@ -46,6 +57,8 @@ func init() {
 			getEvents(configPath)
 		},
 	}
+	events.Flags().StringVar(&format, "format", "json", "output format, can be json or md")
+	events.Flags().StringVar(&outputDir, "output", "", "if given, output will be written to the specified directory")
 	Cmd.AddCommand(events)
 
 	tokens := &cobra.Command{
@@ -131,14 +144,75 @@ func getEvents(configDir string) {
 		fmt.Printf("failed to get upcoming Strava events: %v\n", err)
 	}
 
-	// print upcoming events
-	jsonUpcoming, err := json.MarshalIndent(upcoming, "", "  ")
-	if err != nil {
-		fmt.Printf("failed to marshal upcoming events: %v\n", err)
-		return
-	}
+	if format == "md" {
+		for _, event := range upcoming {
+			markdownEvent := MarkdownEvent{
+				SimpleClubEvent: event,
+				URL:             fmt.Sprintf("https://www.strava.com/clubs/%s/group_events/%d", appSettings.ClubID, event.ID),
+			}
+			date, err := time.Parse(time.RFC3339, event.UpcomingOccurences[0])
+			if err != nil {
+				fmt.Printf("failed to parse time: %v\n", err)
+				return
+			}
+			markdownEvent.Date = date.Format("01-01-2006")
+			markdownEvent.Time = date.Format("15:04")
+			markdownEvent.Description = html.UnescapeString(event.Description)
 
-	fmt.Println(string(jsonUpcoming))
+			// load template from a file
+			tmpl, err := template.ParseFiles("event.md")
+			if err != nil {
+				fmt.Printf("failed to parse template: %v\n", err)
+				return
+			}
+
+			// execute template
+			if outputDir != "" {
+				outputPath := filepath.Join(outputDir, fmt.Sprintf("%d.md", event.ID))
+				file, err := os.Create(outputPath)
+				if err != nil {
+					fmt.Printf("failed to create output file: %v\n", err)
+					return
+				}
+				defer file.Close()
+
+				err = tmpl.Execute(file, markdownEvent)
+				if err != nil {
+					fmt.Printf("failed to execute template: %v\n", err)
+					return
+				}
+			} else {
+				err = tmpl.Execute(os.Stdout, markdownEvent)
+				if err != nil {
+					fmt.Printf("failed to execute template: %v\n", err)
+					return
+				}
+			}
+		}
+	} else {
+		jsonUpcoming, err := json.MarshalIndent(upcoming, "", "  ")
+		if err != nil {
+			fmt.Printf("failed to marshal upcoming events: %v\n", err)
+			return
+		}
+		if outputDir != "" {
+			outputPath := filepath.Join(outputDir, "upcoming.json")
+			file, err := os.Create(outputPath)
+			if err != nil {
+				fmt.Printf("failed to create output file: %v\n", err)
+				return
+			}
+			defer file.Close()
+
+			_, err = file.Write(jsonUpcoming)
+			if err != nil {
+				fmt.Printf("failed to write output file: %v\n", err)
+				return
+			}
+		} else {
+			fmt.Println(string(jsonUpcoming))
+		}
+	}
 
 	// store tokens to file
 	err = storeTokensToFile(configDir, appTokens)

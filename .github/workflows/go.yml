@@ -31,15 +31,29 @@ jobs:
       run:
         echo "$STRAVA_TOKENS" > ./exampleConfig/stravaTokens.json
 
-    - name: Test
+    - name: Generate
       env:
         CLIENT_ID: ${{ secrets.CLIENT_ID }}
         CLUB_ID: ${{ secrets.CLUB_ID }}
         CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      run: ./bin/hcvelo strava events --configDir ./exampleConfig --clientID "$CLIENT_ID" --clubID "$CLUB_ID" --clientSecret "$CLIENT_SECRET"
+      run:
+        mkdir ./rides
+        ./bin/hcvelo strava events --configDir ./exampleConfig --clientID "$CLIENT_ID" --clubID "$CLUB_ID" --clientSecret "$CLIENT_SECRET" --format md --output ./rides
 
     - name: Update Secret
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: 
+      run:
         gh secret set STRAVA_TOKENS < ./exampleConfig/stravaTokens.json
+
+    - name: Update Website
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      run:
+        gh repo clone hcvelo/hcvelo.github.io
+        rm ./hcvelo.github.io/content/rides/*
+        cp -r ./rides/* ./hcvelo.github.io/content/rides
+        cd ./hcvelo.github.io
+        git add .
+        git commit -m "Update Rides"
+        git push
