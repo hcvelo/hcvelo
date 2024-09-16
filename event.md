@@ -1,8 +1,8 @@
 ---
 title: {{ .Title }}
 params:
-    date: {{ .Date }}
-    time: {{ .Time }}
+    date: {{ .EventDate }}
+    time: {{ .EventTime }}
     strava_url: {{ .URL }}
 ---
 
@@ -12,7 +12,7 @@ params:
 
 ### Date
 
-{{ .Date }}
+{{ .EventDate }} : {{ .EventTime }}
 
 ### Start
 

@@ -17,9 +17,9 @@ import (
 
 type MarkdownEvent struct {
 	lib.SimpleClubEvent
-	URL  string
-	Date string
-	Time string
+	URL       string
+	EventDate string
+	EventTime string
 }
 
 var Cmd = &cobra.Command{
@@ -160,8 +160,8 @@ func getEvents(configDir string) {
 				fmt.Printf("failed to parse time: %v\n", err)
 				return
 			}
-			markdownEvent.Date = date.Format("01-01-2006")
-			markdownEvent.Time = date.In(ukLoc).Format("15:04")
+			markdownEvent.EventDate = date.In(ukLoc).Format("02-01-2006")
+			markdownEvent.EventTime = date.In(ukLoc).Format("15:04")
 			markdownEvent.Description = html.UnescapeString(event.Description)
 
 			// load template from a file
