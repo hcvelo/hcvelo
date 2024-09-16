@@ -145,6 +145,11 @@ func getEvents(configDir string) {
 	}
 
 	if format == "md" {
+		ukLoc, err := time.LoadLocation("Europe/London")
+		if err != nil {
+			fmt.Printf("failed to load location: %v\n", err)
+			return
+		}
 		for _, event := range upcoming {
 			markdownEvent := MarkdownEvent{
 				SimpleClubEvent: event,
@@ -156,7 +161,7 @@ func getEvents(configDir string) {
 				return
 			}
 			markdownEvent.Date = date.Format("01-01-2006")
-			markdownEvent.Time = date.Format("15:04")
+			markdownEvent.Time = date.In(ukLoc).Format("15:04")
 			markdownEvent.Description = html.UnescapeString(event.Description)
 
 			// load template from a file
