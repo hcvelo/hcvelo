@@ -171,7 +171,7 @@ func getEvents(configDir string) {
 				return
 			}
 			markdownEvent.SortDate = date
-			markdownEvent.EventDate = date.In(ukLoc).Format("Monday, 02 Jan 2006")
+			markdownEvent.EventDate = date.In(ukLoc).Format("Monday, 02 Jan")
 			markdownEvent.EventTime = date.In(ukLoc).Format("15:04")
 			markdownEvent.Description = html.UnescapeString(event.Description)
 			mdEvents = append(mdEvents, markdownEvent)
@@ -183,7 +183,7 @@ func getEvents(configDir string) {
 		})
 
 		for i, event := range mdEvents {
-			event.Weight = len(mdEvents) - i
+			event.Weight = i + 1
 
 			// execute template
 			if outputDir != "" {
