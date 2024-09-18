@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,8 +19,10 @@ import (
 type MarkdownEvent struct {
 	lib.SimpleClubEvent
 	URL       string
+	SortDate  time.Time
 	EventDate string
 	EventTime string
+	Weight    int
 }
 
 var Cmd = &cobra.Command{
@@ -150,6 +153,13 @@ func getEvents(configDir string) {
 			fmt.Printf("failed to load location: %v\n", err)
 			return
 		}
+		tmpl, err := template.ParseFiles("event.md")
+		if err != nil {
+			fmt.Printf("failed to parse template: %v\n", err)
+			return
+		}
+
+		mdEvents := make([]MarkdownEvent, 0, len(upcoming))
 		for _, event := range upcoming {
 			markdownEvent := MarkdownEvent{
 				SimpleClubEvent: event,
@@ -160,16 +170,20 @@ func getEvents(configDir string) {
 				fmt.Printf("failed to parse time: %v\n", err)
 				return
 			}
-			markdownEvent.EventDate = date.In(ukLoc).Format("02-01-2006")
+			markdownEvent.SortDate = date
+			markdownEvent.EventDate = date.In(ukLoc).Format("Monday, 02 Jan 2006")
 			markdownEvent.EventTime = date.In(ukLoc).Format("15:04")
 			markdownEvent.Description = html.UnescapeString(event.Description)
+			mdEvents = append(mdEvents, markdownEvent)
+		}
 
-			// load template from a file
-			tmpl, err := template.ParseFiles("event.md")
-			if err != nil {
-				fmt.Printf("failed to parse template: %v\n", err)
-				return
-			}
+		// sort events by SortDate
+		slices.SortFunc(mdEvents, func(a, b MarkdownEvent) int {
+			return a.SortDate.Compare(b.SortDate)
+		})
+
+		for i, event := range mdEvents {
+			event.Weight = len(mdEvents) - i
 
 			// execute template
 			if outputDir != "" {
@@ -181,13 +195,13 @@ func getEvents(configDir string) {
 				}
 				defer file.Close()
 
-				err = tmpl.Execute(file, markdownEvent)
+				err = tmpl.Execute(file, event)
 				if err != nil {
 					fmt.Printf("failed to execute template: %v\n", err)
 					return
 				}
 			} else {
-				err = tmpl.Execute(os.Stdout, markdownEvent)
+				err = tmpl.Execute(os.Stdout, event)
 				if err != nil {
 					fmt.Printf("failed to execute template: %v\n", err)
 					return
