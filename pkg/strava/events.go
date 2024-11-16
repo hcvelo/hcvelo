@@ -69,6 +69,13 @@ func GetClubActivities(input GetActivitiesInput) (SimpleClubEvents, error) {
 	futureEventIDs := make(map[int]struct{})
 	fourHoursAgo := time.Now().Add(-4 * time.Hour)
 	for _, event := range events {
+
+		// bit of a hack to ignore chaingang event which is summer only
+		// comment out in may!
+		if event.ID == 1611651 {
+			continue
+		}
+
 		if len(event.UpcomingOccurences) > 0 {
 			for _, occurrence := range event.UpcomingOccurences {
 				eventDate, err := time.Parse(time.RFC3339, occurrence)
