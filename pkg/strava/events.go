@@ -3,6 +3,7 @@ package strava
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -83,6 +84,8 @@ func GetClubActivities(input GetActivitiesInput) (SimpleClubEvents, error) {
 					return nil, fmt.Errorf("failed to parse event date: %w", err)
 				}
 				if eventDate.After(fourHoursAgo) {
+					event.Title = html.UnescapeString(event.Title)
+					event.Description = html.UnescapeString(event.Description)
 					if _, ok := futureEventIDs[event.ID]; !ok {
 						futureEvents = append(futureEvents, event)
 						futureEventIDs[event.ID] = struct{}{}
