@@ -3,6 +3,9 @@
 
 name: Go
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -67,3 +70,13 @@ jobs:
         else
           echo "No changes to commit"
         fi
+
+    - name: Record last run
+      if: github.event_name != 'pull_request'
+      run: |
+        date -u +"%Y-%m-%dT%H:%M:%SZ" > last-run.txt
+        git config user.email "hcvelo-bot@hcvelo.com"
+        git config user.name "hcvelo"
+        git add last-run.txt
+        git commit -m "Update last-run timestamp [skip ci]"
+        git push
