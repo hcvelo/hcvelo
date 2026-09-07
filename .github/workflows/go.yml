@@ -57,7 +57,7 @@ jobs:
       run: |
         git clone https://github.com/hcvelo/hcvelo.github.io.git
         rm ./hcvelo.github.io/content/rides/*
-        cp -r ./rides/* ./hcvelo.github.io/content/rides
+        cp -r ./rides/. ./hcvelo.github.io/content/rides
         cd ./hcvelo.github.io
         files_changed=$(git status -s)
         if [ -n "$files_changed" ]; then
