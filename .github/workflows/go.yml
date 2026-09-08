@@ -56,7 +56,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
         git clone https://github.com/hcvelo/hcvelo.github.io.git
-        rm ./hcvelo.github.io/content/rides/*
+        find ./hcvelo.github.io/content/rides -mindepth 1 -not -name '_index.md' -delete
         cp -r ./rides/. ./hcvelo.github.io/content/rides
         cd ./hcvelo.github.io
         files_changed=$(git status -s)
